@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GHOST</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --bg:#050505; --card:#111; --orange:#ff6a00; --orange2:#ff8c33; --text:#f0f0f0; --muted:#888; }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg); color:var(--text); font-family:Inter,system-ui; min-height:100vh; overflow-x:hidden; }
+.bg { position:fixed; inset:0; background:radial-gradient(circle at 20% 20%, #1a0a00 0%, transparent 40%), radial-gradient(circle at 80% 80%, #0a0500 0%, transparent 40%); pointer-events:none; z-index:-1; }
+.wrap { max-width:1100px; margin:0 auto; padding:40px 20px; }
+h1 { font-family:Syne,sans-serif; font-size:4.5rem; font-weight:800; letter-spacing:-2px; background:linear-gradient(90deg,#fff,var(--orange)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:8px; }
+.sub { color:var(--muted); font-size:1.1rem; margin-bottom:48px; }
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px; }
+.card { background:rgba(17,17,17,.7); backdrop-filter:blur(12px); border:1px solid #222; border-radius:20px; padding:28px; transition:transform .3s cubic-bezier(.2,.8,.2,1), box-shadow .3s; position:relative; overflow:hidden; }
+.card:hover { transform:translateY(-8px) scale(1.02); box-shadow:0 20px 40px rgba(255,106,0,.15); border-color:#333; }
+.card::before { content:""; position:absolute; inset:0; background:linear-gradient(135deg,transparent,rgba(255,106,0,.08)); opacity:0; transition:opacity .3s; pointer-events:none; }
+.card:hover::before { opacity:1; }
+.card h3 { font-family:Syne,sans-serif; font-size:1.6rem; margin-bottom:8px; }
+.card p { color:var(--muted); font-size:.95rem; margin-bottom:20px; }
+.btn { position:relative; z-index:2;  display:inline-block; background:var(--orange); color:#000; font-weight:600; padding:12px 24px; border-radius:12px; text-decoration:none; transition:all .2s; }
+.btn:hover { background:var(--orange2); transform:translateY(-2px); }
+.glow { position:absolute; width:200px; height:200px; background:radial-gradient(circle,var(--orange),transparent 70%); opacity:.15; filter:blur(40px); pointer-events:none; z-index:-1; }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="wrap">
+  <h1>GHOST</h1>
+  <p class="sub">Multi-company Jitbit sender. Auto-setup any account. One-click blast. One-click clean.</p>
+  <div class="grid">
+    <div class="card">
+      <div class="glow" style="top:-40px;right:-40px"></div>
+      <h3>Auto Setup</h3>
+      <p>Paste any Jitbit URL + credentials. Agent logs in, extracts token, creates the rule, returns ready config.</p>
+      <a class="btn" href="/setup">Launch Agent</a>
+    </div>
+    <div class="card">
+      <div class="glow" style="bottom:-40px;left:-40px"></div>
+      <h3>Sender</h3>
+      <p>Select a saved config, drop subject + HTML + list, blast in parallel through Jitbit SMTP.</p>
+      <a class="btn" href="/send">Open Sender</a>
+    </div>
+    <div class="card">
+      <div class="glow" style="top:20px;left:20px"></div>
+      <h3>Configs</h3>
+      <p>Named configs. One-click load. One-click delete. No Railway variables.</p>
+      <a class="btn" href="/configs-ui">Manage</a>
+      <a class="btn" href="/jobs-ui">Jobs</a>
+      <a class="btn" href="/settings">Settings</a>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

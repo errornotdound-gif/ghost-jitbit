@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configs · GHOST</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root { --bg:#050505; --card:#111; --orange:#ff6a00; --text:#f0f0f0; --muted:#888; }
+* { box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:Inter,system-ui; margin:0; min-height:100vh; }
+.bg { position:fixed; inset:0; background:radial-gradient(circle at 50% 0%, #1a0a00, transparent 40%); z-index:-1; }
+.wrap { max-width:800px; margin:40px auto; padding:20px; }
+h2 { font-family:Syne,sans-serif; font-size:2.2rem; margin-bottom:24px; }
+.card { background:rgba(17,17,17,.8); backdrop-filter:blur(12px); border:1px solid #222; border-radius:16px; padding:20px; margin:12px 0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
+.meta { color:var(--muted); font-size:.85rem; }
+button { background:#222; color:#fff; border:1px solid #333; padding:8px 14px; border-radius:10px; cursor:pointer; margin-left:8px; }
+button.danger { background:#ff3b30; border:none; color:#fff; }
+.back { color:var(--orange); text-decoration:none; }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="wrap">
+  <a class="back" href="/">← back</a>
+  <h2>Configs</h2>
+  <div id="list">loading...</div>
+</div>
+<script>
+async function load() {
+  try {
+    const r = await fetch('/configs');
+    const rows = await r.json();
+    document.getElementById('list').innerHTML = rows.length ? rows.map(c => `
+      <div class="card">
+        <div>
+          <strong>${c.name}</strong>
+          <div class="meta">${c.url} · cat ${c.category_id} · rule ${c.rule_id}</div>
+        </div>
+        <div>
+          <button onclick="del('${c.name}')">Delete</button>
+          <button class="danger" onclick="clean('${c.name}')">Delete All Tickets</button>
+        </div>
+      </div>
+    `).join('') : '<p style="color:#888">No configs yet. Run Setup first.</p>';
+  } catch(e) {
+    document.getElementById('list').textContent = 'load failed: ' + e.message;
+  }
+}
+async function del(name) {
+  if (!confirm('Delete ' + name + '?')) return;
+  await fetch('/configs?name=' + encodeURIComponent(name), {method:'DELETE'});
+  load();
+}
+async function clean(name) {
+  if (!confirm('Close all tickets on ' + name + '?')) return;
+  const r = await fetch('/clean', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name})});
+  const j = await r.json();
+  alert(j.ok ? 'Closed ' + j.closed + ' tickets' : (j.error || 'failed'));
+  load();
+}
+load();
+</script>
+</body>
+</html>

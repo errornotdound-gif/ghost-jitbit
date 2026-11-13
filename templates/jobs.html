@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GHOST · Jobs</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root { --bg:#050505; --card:#111; --orange:#ff6a00; --text:#f0f0f0; --muted:#888; }
+* { box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:Inter,system-ui; margin:0; padding:24px; }
+h1 { font-family:Syne,sans-serif; margin:0 0 20px; }
+.job { background:var(--card); border:1px solid #222; border-radius:12px; padding:16px; margin:12px 0; display:flex; justify-content:space-between; align-items:center; }
+.meta { font-size:.9rem; color:var(--muted); }
+button { background:var(--orange); color:#000; border:none; border-radius:8px; padding:8px 14px; cursor:pointer; font-weight:600; margin-left:6px; }
+button.danger { background:#ef4444; color:#fff; }
+button.ghost { background:#333; color:#fff; }
+a { color:var(--orange); text-decoration:none; }
+</style>
+</head>
+<body>
+<h1>Jobs</h1>
+<p><a href="/send">← sender</a> · <a href="#" onclick="delAll();return false;">delete all</a></p>
+<div id="list"></div>
+<script>
+async function load() {
+  const r = await fetch('/jobs');
+  const jobs = await r.json();
+  document.getElementById('list').innerHTML = jobs.map(j => `
+    <div class="job">
+      <div>
+        <strong>${j.id}</strong> · ${j.status}
+        <div class="meta">${j.sent} sent · ${j.failed} failed · ${j.done}/${j.total}</div>
+      </div>
+      <div>
+        ${j.status === 'running' || j.status === 'queued' ? `<button class="danger" onclick="stop('${j.id}')">Stop</button>` : ''}
+        ${j.status === 'stopped' || j.status === 'error' ? `<button onclick="resume('${j.id}')">Resume</button>` : ''}
+        <button class="ghost" onclick="del('${j.id}')">Delete</button>
+      </div>
+    </div>
+  `).join('') || '<p>no jobs</p>';
+}
+async function stop(id) {
+  await fetch('/job/' + id + '/stop', {method:'POST'});
+  load();
+}
+async function resume(id) {
+  await fetch('/job/' + id + '/resume', {method:'POST'});
+  load();
+}
+async function del(id) {
+  if (!confirm('delete ' + id + '?')) return;
+  await fetch('/job/' + id + '/delete', {method:'POST'});
+  load();
+}
+async function delAll() {
+  if (!confirm('delete all jobs?')) return;
+  await fetch('/jobs/delete-all', {method:'POST'});
+  load();
+}
+load();
+setInterval(load, 3000);
+</script>
+</body>
+</html>

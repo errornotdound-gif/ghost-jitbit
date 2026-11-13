@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sender · GHOST</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root { --bg:#050505; --card:#111; --orange:#ff6a00; --text:#f0f0f0; --muted:#888; }
+* { box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:Inter,system-ui; margin:0; min-height:100vh; }
+.bg { position:fixed; inset:0; background:radial-gradient(circle at 70% 30%, #1a0a00, transparent 50%); z-index:-1; }
+.wrap { max-width:860px; margin:40px auto; padding:20px; }
+h2 { font-family:Syne,sans-serif; font-size:2.2rem; margin-bottom:8px; }
+.sub { color:var(--muted); margin-bottom:24px; }
+.card { background:rgba(17,17,17,.8); backdrop-filter:blur(16px); border:1px solid #222; border-radius:20px; padding:28px; }
+select, input, textarea, button { width:100%; padding:12px 14px; margin:6px 0; border-radius:12px; border:1px solid #333; background:#0a0a0a; color:#fff; font-family:inherit; }
+textarea { min-height:100px; resize:vertical; }
+button { background:var(--orange); color:#000; font-weight:600; border:none; cursor:pointer; }
+button:disabled { opacity:.6; }
+.row { display:flex; gap:12px; }
+.row > * { flex:1; }
+.stats { display:flex; gap:16px; margin:16px 0; font-size:.9rem; }
+.stats span { padding:6px 12px; background:#0a0a0a; border-radius:8px; border:1px solid #222; }
+.points { display:flex; flex-wrap:wrap; gap:4px; max-height:180px; overflow:auto; padding:8px; background:#0a0a0a; border-radius:12px; border:1px solid #222; }
+.pt { width:10px; height:10px; border-radius:50%; }
+.pt.ok { background:#22c55e; }
+.pt.fail { background:#ef4444; }
+#log { margin-top:12px; background:#0a0a0a; padding:14px; border-radius:12px; font-size:.82rem; max-height:160px; overflow:auto; border:1px solid #222; white-space:pre-wrap; min-height:40px; }
+.back { color:var(--orange); text-decoration:none; }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="wrap">
+  <a class="back" href="/">← back</a>
+  <h2>Sender</h2>
+  <p class="sub">20K batches. Live points. Telegram every 1K. Tab can close — send continues.</p>
+  <div class="card">
+    <select id="cfg"></select>
+    <div class="row">
+      <input id="sname" placeholder="Sender Name">
+      <input id="semail" type="email" placeholder="Sender Email (auto if empty)">
+    </div>
+    <input id="subject" placeholder="Subject">
+    <textarea id="html" placeholder="HTML letter"></textarea>
+    <textarea id="list" placeholder="one email per line"></textarea>
+    <div class="row">
+      <input id="tgtoken" placeholder="Telegram Bot Token">
+      <input id="tgchat" placeholder="Telegram Chat ID">
+    </div>
+    <button id="blast">Blast</button>
+    <div class="stats">
+      <span id="st">idle</span>
+      <span id="sent">0 sent</span>
+      <span id="fail">0 failed</span>
+      <span id="tot">0 total</span>
+    </div>
+    <div class="points" id="pts"></div>
+    <pre id="log">ready</pre>
+  </div>
+</div>
+<script>
+let cfgs = [];
+async function loadCfgs() {
+  try {
+    const r = await fetch('/configs');
+    cfgs = await r.json();
+    const sel = document.getElementById('cfg');
+    sel.innerHTML = cfgs.length ? cfgs.map(c => `<option value="${c.name}">${c.name} — ${c.url}</option>`).join('') : '<option>no configs</option>';
+    fillEmail();
+  } catch(e) { document.getElementById('log').textContent = 'load failed: ' + e.message; }
+}
+function fillEmail() {
+  const name = document.getElementById('cfg').value;
+  const c = cfgs.find(x => x.name === name);
+  if (c && c.from_address) document.getElementById('semail').value = c.from_address;
+}
+document.getElementById('cfg').addEventListener('change', fillEmail);
+let job = localStorage.getItem('ghost_job') || null;
+let timer = null;
+loadCfgs();
+if (job) { timer = setInterval(poll, 800); poll(); }
+function poll() {
+  if (!job) return;
+  fetch('/status/' + job).then(r => r.json()).then(j => {
+    document.getElementById('st').textContent = j.status || '—';
+    document.getElementById('sent').textContent = (j.sent || 0) + ' sent';
+    document.getElementById('fail').textContent = (j.failed || 0) + ' failed';
+    document.getElementById('tot').textContent = (j.total || 0) + ' total';
+    const pts = document.getElementById('pts');
+    const done = (j.sent || 0) + (j.failed || 0);
+    const show = Math.min(done, 400);
+    let html = '';
+    for (let i = 0; i < show; i++) {
+      html += i < (j.sent || 0) ? '<div class="pt ok"></div>' : '<div class="pt fail"></div>';
+    }
+    pts.innerHTML = html;
+    if (j.status === 'finished' || j.status === 'error') {
+      clearInterval(timer);
+      localStorage.removeItem('ghost_job');
+      document.getElementById('blast').disabled = false;
+      document.getElementById('log').textContent = JSON.stringify(j, null, 2);
+    }
+  }).catch(() => {});
+}
+document.getElementById('blast').addEventListener('click', async () => {
+  const btn = document.getElementById('blast');
+  const log = document.getElementById('log');
+  btn.disabled = true;
+  log.textContent = 'sending...';
+  document.getElementById('pts').innerHTML = '';
+  try {
+    const r = await fetch('/send', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        name: document.getElementById('cfg').value,
+        subject: document.getElementById('subject').value,
+        html: document.getElementById('html').value,
+        emails: document.getElementById('list').value,
+        sender_name: document.getElementById('sname').value,
+        sender_email: document.getElementById('semail').value,
+        tg_token: document.getElementById('tgtoken').value,
+        tg_chat: document.getElementById('tgchat').value
+      })
+    });
+    const j = await r.json();
+    if (j.job) {
+      job = j.job;
+      localStorage.setItem('ghost_job', job);
+      log.textContent = 'job ' + job + ' running';
+      timer = setInterval(poll, 800);
+      poll();
+    } else {
+      log.textContent = JSON.stringify(j, null, 2);
+      btn.disabled = false;
+    }
+  } catch(e) {
+    log.textContent = 'error: ' + e.message;
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

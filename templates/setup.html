@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Setup · GHOST</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root { --bg:#050505; --card:#111; --orange:#ff6a00; --text:#f0f0f0; --muted:#888; }
+* { box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:Inter,system-ui; min-height:100vh; margin:0; }
+.bg { position:fixed; inset:0; background:radial-gradient(circle at 30% 30%, #1a0a00, transparent 50%); z-index:-1; }
+.wrap { max-width:640px; margin:60px auto; padding:20px; }
+h2 { font-family:Syne,sans-serif; font-size:2.4rem; margin-bottom:8px; }
+.sub { color:var(--muted); margin-bottom:32px; }
+.card { background:rgba(17,17,17,.8); backdrop-filter:blur(16px); border:1px solid #222; border-radius:20px; padding:32px; }
+input, button { width:100%; padding:14px 16px; margin:8px 0; border-radius:12px; border:1px solid #333; background:#0a0a0a; color:#fff; font-size:1rem; }
+button { background:var(--orange); color:#000; font-weight:600; cursor:pointer; border:none; }
+button:disabled { opacity:.6; cursor:wait; }
+#out { margin-top:20px; background:#0a0a0a; padding:16px; border-radius:12px; font-size:.85rem; white-space:pre-wrap; max-height:300px; overflow:auto; border:1px solid #222; min-height:60px; }
+.back { color:var(--orange); text-decoration:none; font-size:.9rem; }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="wrap">
+  <a class="back" href="/">← back</a>
+  <h2>Auto Setup Agent</h2>
+  <p class="sub">Paste any Jitbit account. Agent connects, extracts token, ensures category + rule, returns ready config.</p>
+  <div class="card">
+    <input id="url" placeholder="https://yourcompany.jitbit.com">
+    <input id="user" placeholder="admin@company.com">
+    <input id="pass" type="password" placeholder="password">
+    <button id="go">Run Setup</button>
+    <pre id="out">ready</pre>
+  </div>
+</div>
+<script>
+const btn = document.getElementById('go');
+const out = document.getElementById('out');
+btn.addEventListener('click', async () => {
+  btn.disabled = true;
+  out.textContent = 'connecting...';
+  try {
+    const r = await fetch('/setup', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        url: document.getElementById('url').value.trim(),
+        user: document.getElementById('user').value.trim(),
+        password: document.getElementById('pass').value
+      })
+    });
+    const j = await r.json();
+    if (j.error === "2FA_REQUIRED") {
+      const code = prompt("Enter 2FA code:");
+      if (!code) { out.textContent = "2FA cancelled"; btn.disabled = false; return; }
+      const r2 = await fetch('/setup-2fa', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          url: document.getElementById('url').value.trim(),
+          user: document.getElementById('user').value.trim(),
+          password: document.getElementById('pass').value,
+          code: code
+        })
+      });
+      const j2 = await r2.json();
+      out.textContent = JSON.stringify(j2, null, 2);
+      if (j2.ok) {
+        const name = prompt('Save config as:', 'main');
+        if (name) {
+          await fetch('/configs', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name, ...j2.config}) });
+          out.textContent += '\n\nsaved as ' + name;
+        }
+      }
+      btn.disabled = false;
+      return;
+    }
+    out.textContent = JSON.stringify(j, null, 2);
+    if (j.ok) {
+      const name = prompt('Save config as:', 'main');
+      if (name) {
+        await fetch('/configs', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({name, ...j.config})
+        });
+        out.textContent += '\n\nsaved as ' + name;
+      }
+    }
+  } catch (e) {
+    out.textContent = 'error: ' + e.message;
+  }
+  btn.disabled = false;
+});
+</script>
+</body>
+</html>
